@@ -149,6 +149,34 @@ partial class Node
             case "TdReverbVolume":
                 thisClass = "AudioVolume";
                 Definition = Definition.Replace(" Class=TdReverbVolume ", " Class=AudioVolume ");
+                if (parent != null &&
+                    Properties?.FirstOrDefault(x => x.StartsWith("StereoAmbient")) is string stereoAmbientProp)
+                {
+                    // Prop input looks like this:
+                    // StereoAmbient=(AmbientSound=SoundCue'A_Ambience.Stereo.AirDuct_02',Volume=1.000000,FadeInTime=1.000000,FadeOutTime=4.000000)
+            
+                    ExtractPropFromString(stereoAmbientProp, out var name, out var value, out _);
+        
+                    var str = @$"
+      Begin Actor Class=AmbientSound Name={thisOriginalName}_AmbientSound Archetype=AmbientSound'Engine.Default__AmbientSound'
+         Begin Object Class=AudioComponent Name=AudioComponent0 ObjName=AudioComponent_759 Archetype=AudioComponent'Engine.Default__AmbientSound:AudioComponent0'
+            SoundCue=SoundCue'{KeywordAfter(value, "AmbientSound=SoundCue'")}'
+            VolumeMultiplier={KeywordAfter(value, "Volume=") ?? "1.000000"}
+            Name=" + $"\"AudioComponent_759\"" + $@"
+            ObjectArchetype=AudioComponent'Engine.Default__AmbientSound:AudioComponent0'
+         End Object
+         bIsPlaying=True
+         AudioComponent=AudioComponent'AudioComponent_759'
+         Components(0)=AudioComponent'AudioComponent_759'
+         Tag=" + "AmbientSound" + $@"
+         {Properties?.FirstOrDefault( x => x.StartsWith("Location") )}
+         Name=" + $"\"{thisOriginalName}_AmbientSound\"" + $@"
+         ObjectArchetype=AmbientSound'Engine.Default__AmbientSound'
+      End Actor";
+                    var sr = new StringReader(str);
+                    sr.ReadLine(); // skip initial empty line
+                    parent.Children!.Add( BuildTree(sr.ReadLine()!.TrimStart(), sr) );
+                }
                 break;
             case "InterpActor":
                 thisClass = "StaticMeshActor";
@@ -188,34 +216,6 @@ partial class Node
                 var values = Regex.Matches(rot, @"\d+").Select(x => int.Parse(x.Value)).ToArray();
                 values[2] = (values[2] + 65536 / 4) % 65536;
                 parent.AddProp($"Rotation=(Pitch={values[0]},Yaw={values[1]},Roll={values[2]})");
-                break;
-            }
-            case "AudioVolume" when parent != null && Properties?.FirstOrDefault(x => x.StartsWith("StereoAmbient")) is string stereoAmbientProp:
-            {
-                // Prop input looks like this:
-                // StereoAmbient=(AmbientSound=SoundCue'A_Ambience.Stereo.AirDuct_02',Volume=1.000000,FadeInTime=1.000000,FadeOutTime=4.000000)
-        
-                ExtractPropFromString(stereoAmbientProp, out var name, out var value, out _);
-        
-                var str = @$"
-      Begin Actor Class=AmbientSound Name={thisOriginalName}_AmbientSound Archetype=AmbientSound'Engine.Default__AmbientSound'
-         Begin Object Class=AudioComponent Name=AudioComponent0 ObjName=AudioComponent_759 Archetype=AudioComponent'Engine.Default__AmbientSound:AudioComponent0'
-            SoundCue=SoundCue'{KeywordAfter(value, "AmbientSound=SoundCue'")}'
-            VolumeMultiplier={KeywordAfter(value, "Volume=") ?? "1.000000"}
-            Name=" + $"\"AudioComponent_759\"" + $@"
-            ObjectArchetype=AudioComponent'Engine.Default__AmbientSound:AudioComponent0'
-         End Object
-         bIsPlaying=True
-         AudioComponent=AudioComponent'AudioComponent_759'
-         Components(0)=AudioComponent'AudioComponent_759'
-         Tag=" + "AmbientSound" + $@"
-         {Properties?.FirstOrDefault( x => x.StartsWith("Location") )}
-         Name=" + $"\"{thisOriginalName}_AmbientSound\"" + $@"
-         ObjectArchetype=AmbientSound'Engine.Default__AmbientSound'
-      End Actor";
-                var sr = new StringReader(str);
-                sr.ReadLine(); // skip initial empty line
-                parent.Children!.Add( BuildTree(sr.ReadLine()!.TrimStart(), sr) );
                 break;
             }
         }
