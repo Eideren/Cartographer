@@ -63,6 +63,8 @@ partial class Node
         "AudioComponent",
         "SpotLightComponent"
     };
+
+    public void Convert(string prefixParam) => Convert(null, prefixParam);
     
     void Convert(Node? parent, string prefixParam)
     {
@@ -416,11 +418,10 @@ partial class Node
 
 
 
-    public static void SetupFolders(List<Node> nodes, out string folderList)
+    public static void SetupFolders(List<Node> nodes)
     {
-        int? firstLevel = null;
+        (Node n, int i)? firstLevel = null;
         bool init = false;
-        folderList = "Begin FolderList\n";
         
         for (int i = 0; i < nodes.Count; i++)
         {
@@ -431,33 +432,24 @@ partial class Node
             
             if (firstLevel == null)
             {
-                firstLevel = i;
+                firstLevel = (level, i);
                 continue;
             }
             
             if (init == false)
             {
                 init = true;
-                var firstLevelIndex = firstLevel.Value;
-                foreach (Node child in nodes[firstLevelIndex].Children!)
-                    child.AddProp($"FolderPath=\"F_{firstLevelIndex}\"");
-                folderList += $"\tFolder=F_{firstLevelIndex}\n";
+                foreach (Node child in firstLevel?.n.Children!)
+                    child.AddProp($"FolderPath=\"F_{firstLevel?.i}\"");
             }
             foreach (Node child in level.Children)
                 child.AddProp($"FolderPath=\"F_{i}\"");
-            folderList += $"\tFolder=F_{i}\n";
         }
-
-        folderList += "End FolderList"; 
     }
 
 
 
-    public void ToString(TextWriter sOut, string prefix)
-    {
-        Convert(null, prefix);
-        ToString(sOut, 0);
-    }
+    public void ToString(TextWriter sOut) => ToString(sOut, 0);
     
 
 
@@ -992,19 +984,18 @@ public class Program
             using (sIn)
             {
                 string? line;
-                List<Node> nodes = new List<Node>();
+                var nodes = new List<Node>();
                 while ((line = sIn.ReadLine()) != null)
                 {
-                    nodes.Add(Node.BuildTree(line, sIn));
+                    var n = Node.BuildTree(line, sIn);
+                    n.Convert(nodes.Count.ToString());
+                    nodes.Add(n);
                 }
 
-                Node.SetupFolders(nodes, out var folders);
-                int prefix = 0;
+                Node.SetupFolders(nodes);
+                
                 foreach (Node node in nodes)
-                {
-                    node.ToString( sOut, prefix++.ToString() );
-                }
-                sOut.WriteLine(folders);
+                    node.ToString( sOut );
             }
             if (clipboard)
             {
