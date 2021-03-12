@@ -10,5 +10,5 @@ A tool to convert UDK maps to UE4, it only converts the map itself, assets must 
 The executable reads up to two arguments, the first one is an input file if you don't want to work off of the clipboard and the second one is the UE4 project location.
 
 ### Building
-1. Install dotnet core 3.1 (or later) sdk
+1. Install dotnet 6 (or later) sdk
 2. Open a command line in that dir and type in ``dotnet publish``
